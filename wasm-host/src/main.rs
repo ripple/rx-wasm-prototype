@@ -1,5 +1,8 @@
+mod vm;
+
 use std::collections::HashMap;
-use wasmedge_sdk::{params, wasi::WasiModule, Module, Store, Vm, WasmVal};
+use wasmedge_sdk::{wasi::WasiModule, Module, Store, Vm};
+use crate::vm::run_func;
 
 fn main() {
     let mut wasi_module = WasiModule::create(None, None, None).unwrap();
@@ -13,10 +16,12 @@ fn main() {
     let math_module = Module::from_file(None, &math_wasm_lib_file).unwrap();
     let wasm_module = Module::from_file(None, &wasm_lib_file).unwrap();
     vm.register_module(Some("mock_math_lib"), math_module).unwrap();
-    vm.register_module(Some("wasm-lib"), wasm_module).unwrap();
-
-    let a: i32 = 5;
-    let b: i32 = 3;
-    let res = vm.run_func(Some("wasm-lib"), "add", params!(a, b)).unwrap();
-    println!("add({}, {}) = {}", a, b, res[0].to_i32());
+    vm.register_module(None, wasm_module.clone()).unwrap();
+    let input : Vec<u8> = vec![4, 2, 1];
+    let output = run_func(&mut vm, "test", input);
+    println!("{:?}", output);
 }
+// let a: i32 = 5;
+// let b: i32 = 3;
+// let res = vm.run_func(Some("wasm-lib"), "add", params!(a, b)).unwrap();
+// println!("add({}, {}) = {}", a, b, res[0].to_i32());
