@@ -10,18 +10,10 @@ fn main() {
     instances.insert(wasi_module.name().to_string(), wasi_module.as_mut());
     let mut vm = Vm::new(Store::new(None, instances).unwrap());
 
-    //TODO filename in command line args	
-    let math_wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/mock-math-lib/target/wasm32-wasip1/release/mock_math_lib.wasm";
-    let wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/wasm-lib/target/wasm32-wasip1/release/wasm_lib.wasm";
-    let math_module = Module::from_file(None, &math_wasm_lib_file).unwrap();
+    let wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/wasm-lib/target/wasm32-unknown-unknown/release/wasm_lib.wasm";
     let wasm_module = Module::from_file(None, &wasm_lib_file).unwrap();
-    vm.register_module(Some("mock_math_lib"), math_module).unwrap();
     vm.register_module(None, wasm_module.clone()).unwrap();
-    let input : Vec<u8> = vec![4, 2, 1];
-    let output = run_func(&mut vm, "test", input);
+    let input : Vec<u8> = Vec::from("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
+    let output = run_func(&mut vm, "check_accountID", input);
     println!("{:?}", output);
 }
-// let a: i32 = 5;
-// let b: i32 = 3;
-// let res = vm.run_func(Some("wasm-lib"), "add", params!(a, b)).unwrap();
-// println!("add({}, {}) = {}", a, b, res[0].to_i32());
