@@ -10,7 +10,9 @@ fn main() {
     instances.insert(wasi_module.name().to_string(), wasi_module.as_mut());
     let mut vm = Vm::new(Store::new(None, instances).unwrap());
 
-    let wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/wasm-lib/target/wasm32-unknown-unknown/release/wasm_lib.wasm";
+    let wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/wasm-lib/target/wasm32-wasip1/release/wasm_lib.wasm";
+    // let wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/wasm-lib/target/wasm32-unknown-unknown/release/wasm_lib.wasm";
+
     let wasm_module = Module::from_file(None, &wasm_lib_file).unwrap();
     vm.register_module(None, wasm_module.clone()).unwrap();
 
@@ -40,16 +42,11 @@ fn main() {
        "OwnerNode" : "0",
        "PreviousTxnID" : "CF25D1C6B8E637C7DAC61B586F820A16896A3090D9F6FBF9FA00D8B13A265647",
        "PreviousTxnLgrSeq" : 4,
-       "index" : "9BC6631F3EC761CF9BD846D006560E2D57B0A5C91D4570AEB209645B189A702F"
+       "index" : "9BC6631F3EC761CF9BD846D006560E2D57B0A5C91D4570AEB209645B189A702F",
+       "Data" : "1"
     }"#;
 
     let output = run_func(&mut vm, "compare_accountID", escrow_tx_json_str.as_bytes().to_vec(), escrow_lo_json_str.as_bytes().to_vec());
     println!("{:?}", output);
 }
-
-//r#"{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","TransactionType":"EscrowFinish","Flags":0,"Owner":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","OfferSequence":7,"Condition":"DEADBEEF","Fulfillment":"DEADBEEF"}"#;
-
-// let escrow_lo_json_str: Vec<u8> = escrow_json_str.as_bytes().to_vec();
-// // println!("vec u8 from str {:?}", escrow_tx_json_bytes);
-// let escrow_lo_json_bytes = escrow_tx_json_bytes.clone();
 
