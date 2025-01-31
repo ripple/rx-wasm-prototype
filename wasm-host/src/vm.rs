@@ -22,8 +22,12 @@ fn get_ledger_sqn(
 pub fn run_func(
     wasm_lib_file: &str,
     func_name: impl AsRef<str>,
-) -> WasmEdgeResult<bool> {
-    let mut wasi_module = WasiModule::create(None, None, None).unwrap();
+) -> WasmEdgeResult<()> {
+
+    let alloc_size = 1 as i32;
+    let args = params!(alloc_size);
+
+    let mut wasi_module = WasiModule::create(None, None, None)?;
 
     let ledger = LedgerData { sqn: 5 };
 
@@ -38,10 +42,19 @@ pub fn run_func(
     instances.insert(wasi_module.name().to_string(), wasi_module.as_mut());
     instances.insert(import_object.name().unwrap(), &mut import_object);
 
-    let mut vm = Vm::new(Store::new(None, instances).unwrap());
-    let wasm_module = Module::from_file(None, &wasm_lib_file).unwrap();
-    vm.register_module(None, wasm_module.clone()).unwrap();
+    let mut vm = Vm::new(Store::new(None, instances)?);
+    let wasm_module = Module::from_file(None, &wasm_lib_file)?;
+    vm.register_module(None, wasm_module.clone())?;
 
-    let rets = vm.run_func(None, func_name, params!())?;
-    Ok(rets[0].to_i32() == 1)
+    let pointer = match vm.run_func(None, "allocate", params!(alloc_size)) {
+        Ok(res) => res[0].to_i32(),
+        Err(err) => {
+            return Err(err);
+        }
+    };
+
+    // let a: i32 = 3;
+    // let args = params!(a);
+    let rets = vm.run_func(None, func_name, params!(alloc_size))?;
+    Ok(())
 }

@@ -1,6 +1,24 @@
 #[no_mangle]
-pub fn ready() -> bool {
-    unsafe { host_lib::get_ledger_sqn() >= 5}
+pub fn looping(to: i32) {
+    let mut count = 0;
+    loop {
+        count += 1;
+        if count == to {
+            break;
+        }
+    }
+}
+
+#[no_mangle]
+pub fn looping_host(to: i32) {
+    let mut count = 0;
+    loop {
+        unsafe { let _ = host_lib::get_ledger_sqn(); }
+        count += 1;
+        if count == to {
+            break;
+        }
+    }
 }
 
 pub mod host_lib {
