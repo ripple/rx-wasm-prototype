@@ -5,4 +5,3 @@ edition = "2021"
 
 [dependencies]
 wasmedge-sdk = {version = "0.14.0", features = ["standalone"]}
-serde_json = "1.0.135"

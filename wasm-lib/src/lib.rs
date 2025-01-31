@@ -13,7 +13,7 @@ pub fn looping(to: i32) {
 pub fn looping_host(to: i32) {
     let mut count = 0;
     loop {
-        unsafe { let _ = host_lib::get_ledger_sqn(); }
+        unsafe { let _ = host_lib::constInt(); }
         count += 1;
         if count == to {
             break;
@@ -24,6 +24,6 @@ pub fn looping_host(to: i32) {
 pub mod host_lib {
     #[link(wasm_import_module = "host_lib")]
     extern "C" {
-        pub fn get_ledger_sqn() -> i32;
+        pub fn constInt() -> i32;
     }
 }
