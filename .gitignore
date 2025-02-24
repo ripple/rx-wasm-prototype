@@ -1,7 +1,7 @@
-mock-math-lib/target
+helper-lib/target
 wasm-host/target
 wasm-lib/target
-mock-math-lib/.idea
+helper-lib/.idea
 wasm-host/.idea
 wasm-lib/.idea
 
