@@ -1,7 +1,7 @@
-helper-lib/target
+xrpl-std/target
 wasm-host/target
 wasm-lib/target
-helper-lib/.idea
+xrpl-std/.idea
 wasm-host/.idea
 wasm-lib/.idea
 
