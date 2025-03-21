@@ -105,7 +105,7 @@ pub unsafe fn get_current_escrow_finish_after() -> i32 {
     r.parse::<i32>().unwrap()
 }
 
-pub unsafe  fn get_current_escrow_cancel_after() -> i32 {
+pub unsafe fn get_current_escrow_cancel_after() -> i32 {
     let mut fname = String::from("CancelAfter");
     let pointer = fname.as_mut_ptr();
     let len = fname.len();
@@ -138,13 +138,13 @@ pub unsafe fn update_current_escrow_data(data: Vec<u8>) {
 //     host_lib::print(s_ptr as i32, s_len as i32);
 // }
 
-pub unsafe fn print_data(s: &Vec<u8>){
+pub unsafe fn print_data(s: &Vec<u8>) {
     let s_ptr = s.as_ptr();
     let s_len = s.len();
     host_lib::print(s_ptr as i32, s_len as i32);
 }
 
-pub unsafe fn print_number<T : ToString>(number: &T){
+pub unsafe fn print_number<T: ToString>(number: &T) {
     let s = number.to_string();
     let s_ptr = s.as_ptr();
     let s_len = s.len();
