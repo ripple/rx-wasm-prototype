@@ -1,10 +1,10 @@
 [package]
 edition = "2021"
-name = "helper-lib"
+name = "xrpl-std"
 version = "0.0.1"
 
 [lib]
-crate-type = ["lib"]
-#crate-type = ["cdylib"]
+#crate-type = ["lib"]
+crate-type = ["cdylib"]
 
 [dependencies]
