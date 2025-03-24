@@ -5,10 +5,3 @@ version = 3
 [[package]]
 name = "wasm-lib"
 version = "0.0.1"
-dependencies = [
- "xrpl-std",
-]
-
-[[package]]
-name = "xrpl-std"
-version = "0.0.1"

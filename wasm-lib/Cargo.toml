@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 lto = true
 opt-level = 's'
 
-[dependencies]
-xrpl-std = { path = "../xrpl-std" }
+#[dependencies]
+#xrpl-std = { path = "../xrpl-std" }
