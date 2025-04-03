@@ -5,3 +5,5 @@ mock-math-lib/.idea
 wasm-host/.idea
 wasm-lib/.idea
 
+/.idea
+/target
