@@ -1,0 +1,24 @@
+[package]
+edition = "2021"
+name = "rx-wasm-prototype"
+version = "0.0.1"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Add any dependencies your parent project directly uses here.
+# For example:
+# serde = { version = "1.0", features = ["derive"] }
+
+[build-dependencies]
+# Add any build-time dependencies here if needed.
+# For example:
+# cc = "1.0"
+
+[workspace]
+members = [
+    # "src", # if you are using src as a library. if it is a binary, you'll want to change this to the binary name, or remove it.
+    "mock-math-lib",
+    "wasm-lib",
+    "wasm-host"
+]
