@@ -6,12 +6,13 @@ use wasmedge_sdk::vm::SyncInst;
 use wasmedge_sdk::wasi::WasiModule;
 
 #[derive(Clone, Debug)]
-struct LedgerData {
+struct LedgerData<'a, 'inst, T: ?Sized + SyncInst> {
     sqn: i32,
+    vm: &'a Vm<'inst, T>,
 }
 
-fn get_ledger_sqn(
-    data: &mut LedgerData,
+fn getLedgerSqn(
+    data: &mut LedgerData<T>,
     _inst: &mut Instance,
     _caller: &mut CallingFrame,
     _input: Vec<WasmValue>,
@@ -23,13 +24,20 @@ pub fn run_func(
     wasm_lib_file: &str,
     func_name: impl AsRef<str>,
 ) -> WasmEdgeResult<bool> {
+    let mut instances: HashMap<String, &mut dyn SyncInst> = HashMap::new();
+    let mut vm = Vm::new(Store::new(None, instances).unwrap());
+    let s = vm.store_mut();
+
+
+
+
     let mut wasi_module = WasiModule::create(None, None, None).unwrap();
 
-    let ledger = LedgerData { sqn: 5 };
+    let ledger = LedgerData { sqn: 5, vm: &vm};
 
     let mut import_builder = ImportObjectBuilder::new("host_lib", ledger)?;
     import_builder
-        .with_func::<(), i32>("get_ledger_sqn", get_ledger_sqn)
+        .with_func::<(), i32>("getLedgerSqn", getLedgerSqn)
         .unwrap();
     let mut import_object = import_builder.build();
 
@@ -39,6 +47,8 @@ pub fn run_func(
     instances.insert(import_object.name().unwrap(), &mut import_object);
 
     let mut vm = Vm::new(Store::new(None, instances).unwrap());
+
+
     let wasm_module = Module::from_file(None, &wasm_lib_file).unwrap();
     vm.register_module(None, wasm_module.clone()).unwrap();
 
