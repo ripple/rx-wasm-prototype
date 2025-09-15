@@ -1,22 +1,29 @@
-use std::collections::HashMap;
-use wasmedge_sdk::{params, wasi::WasiModule, Module, Store, Vm, WasmVal};
+use std::path::PathBuf;
+use std::time::Instant;
+use log::debug;
+use wamr_rust_sdk::function::Function;
+use wamr_rust_sdk::instance::Instance;
+use wamr_rust_sdk::module::Module;
+use wamr_rust_sdk::runtime::Runtime;
 
 fn main() {
-    let mut wasi_module = WasiModule::create(None, None, None).unwrap();
-    let mut instances = HashMap::new();
-    instances.insert(wasi_module.name().to_string(), wasi_module.as_mut());
-    let mut vm = Vm::new(Store::new(None, instances).unwrap());
+    let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+    debug!("Loading WASM module from file: {}", wasm_file);
+    let wasm_path = PathBuf::from(wasm_file);
 
-    //TODO filename in command line args	
-    let math_wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/mock-math-lib/target/wasm32-wasip1/release/mock_math_lib.wasm";
-    let wasm_lib_file = "/home/pwang/wasm/rx-wasm-prototype/wasm-lib/target/wasm32-wasip1/release/wasm_lib.wasm";
-    let math_module = Module::from_file(None, &math_wasm_lib_file).unwrap();
-    let wasm_module = Module::from_file(None, &wasm_lib_file).unwrap();
-    vm.register_module(Some("mock_math_lib"), math_module).unwrap();
-    vm.register_module(Some("wasm-lib"), wasm_module).unwrap();
+    let runtime = Runtime::builder()
+        .use_system_allocator()
+        .run_as_interpreter()
+        .build().unwrap();
+    let module = Module::from_file(&runtime, wasm_path.as_path()).unwrap();
+    let instance = Instance::new(&runtime, &module, 1024 * 128).unwrap();
 
-    let a: i32 = 5;
-    let b: i32 = 3;
-    let res = vm.run_func(Some("wasm-lib"), "add", params!(a, b)).unwrap();
-    println!("add({}, {}) = {}", a, b, res[0].to_i32());
+    debug!("Executing WASM function");
+    let func = Function::find_export_func(&instance, "finish").unwrap();
+    let start = Instant::now();
+    let results = func.call(&instance, &vec![], None).unwrap();
+    let duration = start.elapsed();
+
+    println!("result {:?}", results);
+    println!("Execution time: {:?}", duration);
 }
