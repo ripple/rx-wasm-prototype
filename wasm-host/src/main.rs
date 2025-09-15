@@ -1,29 +1,46 @@
 use std::path::PathBuf;
 use std::time::Instant;
+use wasmtime::*;
 use log::debug;
-use wamr_rust_sdk::function::Function;
-use wamr_rust_sdk::instance::Instance;
-use wamr_rust_sdk::module::Module;
-use wamr_rust_sdk::runtime::Runtime;
 
-fn main() {
+fn main() -> Result<()> {
+    // 1. Set up the Wasmtime environment with fuel enabled
     let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
     debug!("Loading WASM module from file: {}", wasm_file);
     let wasm_path = PathBuf::from(wasm_file);
 
-    let runtime = Runtime::builder()
-        .use_system_allocator()
-        .run_as_interpreter()
-        .build().unwrap();
-    let module = Module::from_file(&runtime, wasm_path.as_path()).unwrap();
-    let instance = Instance::new(&runtime, &module, 1024 * 128).unwrap();
+    let mut config = Config::new();
+    config.strategy(Strategy::Cranelift);
+    // Enable fuel metering
+    config.consume_fuel(true);
+    config.cranelift_opt_level(OptLevel::Speed); // This is key for interpreter mode
 
+    let engine = Engine::new(&config)?;
+    // The Store holds our fuel counter
+    let mut store = Store::new(&engine, ());
+
+    // 2. Set the initial fuel limit for this execution
+    // You can set this to any large number. 1_000_000_000 is a good starting point.
+    store.set_fuel(1_000_000_000_000)?;
+
+    // 3. Load the module and create an instance
+    let module = Module::from_file(store.engine(), &wasm_path)?;
+    let instance = Instance::new(&mut store, &module, &[])?;
+
+    // 4. Find and call the exported function
     debug!("Executing WASM function");
-    let func = Function::find_export_func(&instance, "finish").unwrap();
+    let func = instance.get_typed_func::<(), i32>(&mut store, "finish")?;
+
     let start = Instant::now();
-    let results = func.call(&instance, &vec![], None).unwrap();
+    let result = func.call(&mut store, ())?;
     let duration = start.elapsed();
 
-    println!("result {:?}", results);
+    // 5. Get the amount of fuel consumed
+    let consumed_fuel = 1_000_000_000_000 - store.get_fuel()?;
+
+    println!("result {:?}", result);
     println!("Execution time: {:?}", duration);
+    println!("Fuel consumed: {}", consumed_fuel);
+
+    Ok(())
 }

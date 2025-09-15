@@ -3,8 +3,8 @@
     (local $count i32)
     (local $accumulator i64)
 
-    (local.set $count (i32.const 100000000))
-    (local.set $accumulator (i64.const 100000000)) ;; Initial value to prevent division by zero
+    (local.set $count (i32.const 1000000000))
+    (local.set $accumulator (i64.const 1000000000)) ;; Initial value to prevent division by zero
 
     (loop $my_loop
       ;; Perform the division and accumulate the result
