@@ -1,5 +1,6 @@
 (module
   ;; A function that loops a fixed number of times and performs a division.
+
   (func (export "finish") (result i32)
     (local $count i32)
     (local.set $count (i32.const 100000000))

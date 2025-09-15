@@ -17,13 +17,14 @@ fn main() {
         .build().unwrap();
     let module = Module::from_file(&runtime, wasm_path.as_path()).unwrap();
     let instance = Instance::new(&runtime, &module, 1024 * 128).unwrap();
-
+    let gas_cap: Option<u32> = Some(2_000_000_000);
     debug!("Executing WASM function");
     let func = Function::find_export_func(&instance, "finish").unwrap();
     let start = Instant::now();
-    let results = func.call(&instance, &vec![], None).unwrap();
+    let results = func.call(&instance, &vec![], gas_cap).unwrap();
     let duration = start.elapsed();
 
     println!("result {:?}", results);
     println!("Execution time: {:?}", duration);
+    // println!()
 }
