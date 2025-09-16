@@ -5,7 +5,8 @@ use log::debug;
 
 fn main() -> Result<()> {
     // 1. Set up the Wasmtime environment with fuel enabled
-    let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+    // let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+    let wasm_file = "/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
     debug!("Loading WASM module from file: {}", wasm_file);
     let wasm_path = PathBuf::from(wasm_file);
 
@@ -13,7 +14,7 @@ fn main() -> Result<()> {
     config.strategy(Strategy::Cranelift);
     // Enable fuel metering
     config.consume_fuel(true);
-    config.cranelift_opt_level(OptLevel::Speed); // This is key for interpreter mode
+    config.cranelift_opt_level(OptLevel::None); // This is key for interpreter mode
 
     let engine = Engine::new(&config)?;
     // The Store holds our fuel counter
