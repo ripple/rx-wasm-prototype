@@ -7,7 +7,9 @@ use wamr_rust_sdk::module::Module;
 use wamr_rust_sdk::runtime::Runtime;
 
 fn main() {
-    let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+    // let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+    let wasm_file = "/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+
     debug!("Loading WASM module from file: {}", wasm_file);
     let wasm_path = PathBuf::from(wasm_file);
 
