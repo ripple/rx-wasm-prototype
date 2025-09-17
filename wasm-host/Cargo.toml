@@ -8,3 +8,5 @@ edition = "2021"
 log = "0.4.22"
 #wamr-rust-sdk = { git = "https://github.com/ripple/wamr-rust-sdk.git"}
 wasmtime = { version = "36.0.2", features = ["pulley"]}
+sha2 = "0.11.0-rc.2"
+anyhow = "1.0.99"
