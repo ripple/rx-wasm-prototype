@@ -11,10 +11,13 @@ fn main() -> Result<()> {
     let wasm_path = PathBuf::from(wasm_file);
 
     let mut config = Config::new();
-    config.strategy(Strategy::Cranelift);
-    // Enable fuel metering
     config.consume_fuel(true);
-    config.cranelift_opt_level(OptLevel::None); // This is key for interpreter mode
+    let _ = config.target("pulley64").unwrap();
+    // config.strategy(Strategy::Cranelift);
+    // config.cranelift_opt_level(OptLevel::Speed);
+
+
+    let start = Instant::now();
 
     let engine = Engine::new(&config)?;
     // The Store holds our fuel counter
@@ -32,15 +35,17 @@ fn main() -> Result<()> {
     debug!("Executing WASM function");
     let func = instance.get_typed_func::<(), i32>(&mut store, "finish")?;
 
-    let start = Instant::now();
+    let start2 = Instant::now();
     let result = func.call(&mut store, ())?;
+    let duration2 = start2.elapsed();
     let duration = start.elapsed();
 
     // 5. Get the amount of fuel consumed
     let consumed_fuel = 1_000_000_000_000 - store.get_fuel()?;
 
     println!("result {:?}", result);
-    println!("Execution time: {:?}", duration);
+    println!("total execution time:    {:?}", duration);
+    println!("function execution time: {:?}", duration2);
     println!("Fuel consumed: {}", consumed_fuel);
 
     Ok(())
