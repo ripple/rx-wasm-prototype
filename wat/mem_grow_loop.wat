@@ -8,7 +8,7 @@
     (local $dummy_result i32)
 
     ;; Set the loop count to 100,000,000
-    (local.set $count (i32.const 1000000))
+    (local.set $count (i32.const 10))
 
     (loop $my_loop
       ;; The operation we are measuring: memory.grow
