@@ -26,7 +26,7 @@ fn main() {
     let results = func.call(&instance, &vec![], gas_cap).unwrap();
     let duration = start.elapsed();
 
-    println!("result {:?}", results);
+    println!("result {:?}, gas {}", results.0, 2_000_000_000-results.1);
     println!("Execution time: {:?}", duration);
     // println!()
 }
