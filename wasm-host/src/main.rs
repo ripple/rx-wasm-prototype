@@ -97,8 +97,8 @@ pub fn compute_sha512_half(
 
 fn main() -> Result<()> {
     // 1. Set up the Wasmtime environment with fuel enabled
-    // let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
-    let wasm_file = "/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
+    let wasm_file = "/home/pwang/wasm/rx-wasm-prototype/wat/sha_1KB_10kLoop.wasm";
+    // let wasm_file = "/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm";
     debug!("Loading WASM module from file: {}", wasm_file);
     let wasm_path = PathBuf::from(wasm_file);
 
