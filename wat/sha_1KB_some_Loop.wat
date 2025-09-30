@@ -15,7 +15,7 @@
     (local $dummy_result i32)
 
     ;; Set the loop count to 10,000
-    (local.set $count (i32.const 100000))
+    (local.set $count (i32.const 10))
 
     (loop $my_loop
       ;; Push the arguments for the host function call
