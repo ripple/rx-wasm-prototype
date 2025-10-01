@@ -111,6 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create a `Config` and enable fuel consumption.
     let mut config = Config::default();
     config.consume_fuel(true);
+    config.floats(false);
 
     // 2. Create the `Engine` and a `Store`. The store holds the fuel.
     let engine = Engine::new(&config);
