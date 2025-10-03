@@ -132,7 +132,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // 5. Load and compile the Wasm module.
-    let wasm_file = PathBuf::from("/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm"); // Make sure test.wasm is in the project root
+    // let wasm_file = PathBuf::from("/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm"); // Make sure test.wasm is in the project root
+    let wasm_file = PathBuf::from("/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
     println!("Loading WASM module from: {:?}", wasm_file);
     let wasm_bytes = fs::read(wasm_file)?;
     let module = Module::new(&engine, &wasm_bytes)?;
