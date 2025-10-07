@@ -6,4 +6,6 @@ edition = "2021"
 [dependencies]
 env_logger = "0.11.8"
 sha2 = "0.11.0-rc.2"
-wasmi = {git = "https://github.com/wasmi-labs/wasmi.git"}
+#wasmi = {git = "https://github.com/wasmi-labs/wasmi.git"}
+wasmi_c_api_impl = "0.51.1"
+wasmi_c_api_macros = "0.51.1"

@@ -1,178 +1,169 @@
 use std::fs;
-use sha2::{Digest, Sha512};
-use wasmi::{
-    Caller, Config, Engine, Extern, Func, Linker, Module, Store,
-};
 use std::path::PathBuf;
 use std::time::Instant;
-
-// This hashing function remains unchanged.
-pub fn sha512_half(data: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha512::new();
-    hasher.update(data);
-    let result = hasher.finalize();
-    result[..32].to_vec()
-}
-
-// Helper to read data from Wasm memory.
-// Note: In `wasmi`, it's often cleaner to get the memory once inside the main host function
-// and pass it to helpers, rather than resolving the export multiple times.
-fn get_data_from_memory(
-    memory: &wasmi::Memory,
-    store: &impl wasmi::AsContext,
-    pointer: u32,
-    len: u32,
-) -> Vec<u8> {
-    let pointer = pointer as usize;
-    let len = len as usize;
-
-    // `wasmi` provides a `read` method that performs bounds checking for you.
-    let mut buffer = vec![0u8; len];
-    memory.read(store, pointer, &mut buffer).unwrap();
-
-    buffer
-}
-
-// Helper to write data to Wasm memory.
-fn set_data_in_memory(
-    memory: &wasmi::Memory,
-    store: &mut impl wasmi::AsContextMut,
-    data: &[u8],
-    output_pointer: u32,
-)  {
-    // `wasmi` provides a `write` method that performs bounds checking.
-    memory.write(store, output_pointer as usize, data).unwrap();
-
-}
-
-/// The host function, adapted for the `soroban-wasmi` API.
-pub fn compute_sha512_half(
-    mut caller: Caller<'_, ()>,
-    in_buf_ptr: u32,
-    in_buf_len: u32,
-    out_buf_ptr: u32,
-    out_buf_cap: u32,
-) -> i32 {
-    // --- soroban-wasmi Change: Host Function Fuel Metering ---
-    // `soroban-wasmi` provides a direct `consume_fuel` method.
-    // This is much cleaner than the get/set pattern in wasmtime.
-    // This will return an error if there isn't enough fuel.
-    caller.set_fuel(caller.get_fuel().unwrap().saturating_sub( 1000)).unwrap();
-    // let custom_cost = 2_000;
-    // let mut have = caller.get_fuel().unwrap();
-    //
-    // if have < custom_cost {
-    //     // If fuel is insufficient, we panic. The VM will catch this and trap execution.
-    //     panic!("Host function trap: Out of fuel.");
-    // }
-    //
-    // have = have.saturating_sub(custom_cost);
-    //
-    // caller.set_fuel(have).unwrap();
-    //     // consume_fuel(custom_cot)?;
-
-    if 32 > out_buf_cap {
-        return -1;
-        // We return a `Trap` to signal an error to the Wasm module.
-        // return Err(Trap::new(TrapCode::UnreachableCodeReached));
-            // .with_message("Output buffer capacity is less than 32"));
-    }
-
-    if in_buf_len > 1024 {
-        return -1;
-            // .with_message("Input buffer length exceeds 1024"));
-    }
-
-    // --- soroban-wasmi Change: Memory Access ---
-    // Get the exported memory from the caller. The name "mem" must match the export name in your Wasm.
-    let memory = caller
-        .get_export("mem")
-        .and_then(Extern::into_memory).unwrap();
-        // .ok_or_else(|| Trap::new(TrapCode::MemoryOutOfBounds));
-
-    // Read the input data from Wasm memory.
-    let data = get_data_from_memory(&memory, &caller, in_buf_ptr, in_buf_len);
-
-    // Perform the computation.
-    let hash_half = sha512_half(&data);
-
-    // Write the result back to Wasm memory.
-    set_data_in_memory(&memory, &mut caller, &hash_half, out_buf_ptr);
-
-    // Return the number of bytes written.
-    32
-}
+use wasmi_c_api::*;
+use wasmi_c_api::wasm_valkind_t::WASM_I32;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    unsafe {
+        println!("--- Initializing Wasm Environment (C API) ---");
 
-    // 1. Create a `Config` and enable fuel consumption.
-    let mut config = Config::default();
-    config.consume_fuel(true);
-    config.floats(false);
-    config.wasm_mutable_global(false);
-    config.wasm_multi_value(false);
-    config.wasm_multi_memory(false);
-    config.wasm_saturating_float_to_int(false);
-    config.wasm_sign_extension(false);
-    config.wasm_bulk_memory(false);
-    config.wasm_reference_types(false);
-    config.wasm_tail_call(false);
-    config.wasm_custom_page_sizes(false);
-    config.wasm_memory64(false);
-    config.wasm_wide_arithmetic(false);
+        // 1. Create a Config
+        let mut config = wasm_config_new();
 
-    // 2. Create the `Engine` and a `Store`. The store holds the fuel.
-    let engine = Engine::new(&config);
-    let mut store = Store::new(&engine, ());
+        // TODO: Fuel consumption not compatible with standard C API functions
+        // wasmi_config_consume_fuel_set(&mut config, true);
 
-    // 3. Set the initial fuel. This is the "gas limit" for the transaction.
-    let initial_fuel = 18_000;
-    store.set_fuel(initial_fuel)?;
-    println!("Initial fuel limit set to: {}", initial_fuel);
+        // 2. Create the Engine 
+        let engine = wasm_engine_new_with_config(config);
+        
+        // Create regular wasm_store (this will also support fuel when enabled in config)
+        let mut store = wasm_store_new(&engine);
+        
+        println!("Engine and Store created successfully");
 
-    // 4. Create a `Linker` and define the host function import.
-    let mut linker = Linker::new(&engine);
-    linker.func_wrap(
-        "host_lib", // Module name in Wasm
-        "compute_sha512_half", // Function name in Wasm
-        compute_sha512_half,
-    )?;
+        // 4. Load and compile the Wasm module
+        let wasm_file = PathBuf::from("/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
+        println!("Attempting to read WASM module from: {:?}", wasm_file);
+        let wasm_bytes = fs::read(&wasm_file)?;
 
-    // 5. Load and compile the Wasm module.
-    // let wasm_file = PathBuf::from("/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm"); // Make sure test.wasm is in the project root
-    let wasm_file = PathBuf::from("/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
-    println!("Loading WASM module from: {:?}", wasm_file);
-    let wasm_bytes = fs::read(wasm_file)?;
-    let module = Module::new(&engine, &wasm_bytes)?;
+        let mut wasm_byte_vec = std::mem::zeroed();
+        wasm_byte_vec_new(&mut wasm_byte_vec, wasm_bytes.len(), wasm_bytes.as_ptr());
 
-    let start = Instant::now();
+        // 5. Create the Module 
+        println!("Creating Module from binary bytes...");
+        let module = wasm_module_new(&mut store, &wasm_byte_vec);
+        
+        if module.is_none() {
+            wasm_byte_vec_delete(&mut wasm_byte_vec);
+            return Err(format!("Failed to create Wasm Module from {:?}", wasm_file).into());
+        }
+        let module = module.unwrap();
 
-    // 6. Instantiate the module, linking the host functions.
-    let instance = linker.instantiate_and_start(&mut store, &module)?;
+        // 5. Set up empty imports vector (no imports needed)
+        let mut imports = std::mem::zeroed();
+        wasm_extern_vec_new_empty(&mut imports);
 
-    // 7. Get the exported Wasm function you want to call.
-    let func: Func = instance.get_func(&mut store, "finish").ok_or("finish export not found")?;
+        let start = Instant::now();
 
-    let start2 = Instant::now();
-    let mut result_buffer = [wasmi::Val::I32(0)];
-    func.call(&mut store, &[], &mut result_buffer)?;
-    let duration2 = start2.elapsed();
-    let duration = start.elapsed();
+        // 6. Get module export types to find "finish" by name
+        let mut export_types = std::mem::zeroed();
+        wasm_module_exports(&module, &mut export_types);
+        
+        let export_types_slice = export_types.as_slice();
+        println!("Found {} export types", export_types_slice.len());
+        
+        let mut finish_export_index = None;
+        for (i, export_type) in export_types_slice.iter().enumerate() {
+            if let Some(et) = export_type.as_ref() {
+                let name_vec = wasm_exporttype_name(et);
+                let name_slice = name_vec.as_slice();
+                let name_str = std::str::from_utf8(name_slice).unwrap_or("");
+                println!("Export {}: {}", i, name_str);
+                if name_str == "finish" {
+                    finish_export_index = Some(i);
+                    break;
+                }
+            }
+        }
 
-    let result = result_buffer[0].i32().ok_or("Invalid result type")?;
+        if finish_export_index.is_none() {
+            return Err("finish function not found in exports".into());
+        }
+        let finish_index = finish_export_index.unwrap();
 
-    // `wasmi` tracks both remaining and consumed fuel.
-    // let consumed_fuel = store.fuel_consumed().unwrap();
-    let remaining_fuel = store.get_fuel().unwrap();
+        // 7. Instantiate the module
+        println!("Instantiating Module...");
+        let instance = wasm_instance_new(&mut store, &module, &imports, None);
 
-    println!("\n--- Results ---");
-    println!("Wasm function returned: {:?}", result);
-    println!("Total execution time:    {:?}", duration);
-    println!("Function execution time: {:?}", duration2);
-    println!("Remaining fuel: {} units", remaining_fuel);
-    println!("Fuel consumed: {} units", initial_fuel - remaining_fuel);
+        // Clean up
+        wasm_extern_vec_delete(&mut imports);
+        wasm_byte_vec_delete(&mut wasm_byte_vec);
+        wasm_exporttype_vec_delete(&mut export_types);
+        wasm_module_delete(module);
 
+        if instance.is_none() {
+            return Err("Failed to create Wasm Instance".into());
+        }
+        let mut instance = instance.unwrap();
+
+        // 8. Get exports
+        let mut exports = std::mem::zeroed();
+        wasm_instance_exports(&mut instance, &mut exports);
+
+        println!("Instance created successfully");
+
+        // 9. Access exports using as_slice()
+        let exports_slice = exports.as_slice();
+        println!("Found {} exports", exports_slice.len());
+
+        if exports_slice.is_empty() {
+            return Err("No exports found".into());
+        }
+
+        // 10. Get the finish function by the index we found
+        let finish_export = exports_slice[finish_index].as_ref().ok_or("Finish export is null")?;
+        let mut finish_export_owned = finish_export.clone();
+        let finish_func = wasm_extern_as_func(&mut *finish_export_owned)
+            .ok_or("Finish export is not a function")?;
+
+        // 11. Prepare function call: finish() -> i32
+        let mut args = std::mem::zeroed();
+        wasm_val_vec_new_empty(&mut args);
+
+        // Create result space
+        let result_val = wasm_val_t {
+            kind: WASM_I32,
+            of: std::mem::zeroed(),
+        };
+        let mut results = std::mem::zeroed();
+        wasm_val_vec_new(&mut results, 1, &result_val);
+
+        // 12. Call the WASM function
+        println!("Calling Wasm function: finish()...");
+        let start2 = Instant::now();
+        
+        let trap = wasm_func_call(finish_func, &args, &mut results);
+
+        // TODO: Implement fuel support later
+        // println!("Fuel consumption enabled (reporting not implemented yet)");
+
+        let duration2 = start2.elapsed();
+        let duration = start.elapsed();
+
+        if !trap.is_null() {
+            println!("Function call trapped!");
+            
+            println!("\n--- Results ---");
+            println!("Wasm function TRAPPED");
+            println!("Total execution time:    {:?}", duration);
+            println!("Function execution time: {:?}", duration2);
+        } else {
+            // Get the result using as_slice()
+            let results_slice = results.as_slice();
+            if !results_slice.is_empty() {
+                let result = results_slice[0].of.i32;
+                
+                println!("\n--- Results ---");
+                println!("Wasm function returned: {:?}", result);
+                println!("Total execution time:    {:?}", duration);
+                println!("Function execution time: {:?}", duration2);
+            } else {
+                println!("No results returned from function");
+            }
+        }
+
+        // Clean up
+        println!("\nCleaning up resources...");
+        wasm_val_vec_delete(&mut args);
+        wasm_val_vec_delete(&mut results);
+        wasm_extern_vec_delete(&mut exports);
+        wasm_instance_delete(instance);
+        wasm_store_delete(store);
+        wasm_engine_delete(engine);
+
+        println!("SUCCESS: Actually executed WASM code!");
+    }
 
     Ok(())
 }
