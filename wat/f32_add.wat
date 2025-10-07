@@ -12,7 +12,7 @@
 f32.const 10.5
 f32.const 20.0
 f32.add
-
+;;i32.trunc
 ;; The f32 result (30.5) is now on the top of the stack.
 
 ;; 2. Discard the f32 result from the stack.

@@ -1,7 +1,6 @@
 use std::fs;
 use sha2::{Digest, Sha512};
-use soroban_wasmi::{
-    core::{Trap, },
+use wasmi::{
     Caller, Config, Engine, Extern, Func, Linker, Module, Store,
 };
 use std::path::PathBuf;
@@ -19,11 +18,11 @@ pub fn sha512_half(data: &[u8]) -> Vec<u8> {
 // Note: In `wasmi`, it's often cleaner to get the memory once inside the main host function
 // and pass it to helpers, rather than resolving the export multiple times.
 fn get_data_from_memory(
-    memory: &soroban_wasmi::Memory,
-    store: &impl soroban_wasmi::AsContext,
+    memory: &wasmi::Memory,
+    store: &impl wasmi::AsContext,
     pointer: u32,
     len: u32,
-) -> Result<Vec<u8>, Trap> {
+) -> Vec<u8> {
     let pointer = pointer as usize;
     let len = len as usize;
 
@@ -31,19 +30,19 @@ fn get_data_from_memory(
     let mut buffer = vec![0u8; len];
     memory.read(store, pointer, &mut buffer).unwrap();
 
-    Ok(buffer)
+    buffer
 }
 
 // Helper to write data to Wasm memory.
 fn set_data_in_memory(
-    memory: &soroban_wasmi::Memory,
-    store: &mut impl soroban_wasmi::AsContextMut,
+    memory: &wasmi::Memory,
+    store: &mut impl wasmi::AsContextMut,
     data: &[u8],
     output_pointer: u32,
-) -> Result<(), Trap> {
+)  {
     // `wasmi` provides a `write` method that performs bounds checking.
     memory.write(store, output_pointer as usize, data).unwrap();
-    Ok(())
+
 }
 
 /// The host function, adapted for the `soroban-wasmi` API.
@@ -92,13 +91,13 @@ pub fn compute_sha512_half(
         // .ok_or_else(|| Trap::new(TrapCode::MemoryOutOfBounds));
 
     // Read the input data from Wasm memory.
-    let data = get_data_from_memory(&memory, &caller, in_buf_ptr, in_buf_len).unwrap();
+    let data = get_data_from_memory(&memory, &caller, in_buf_ptr, in_buf_len);
 
     // Perform the computation.
     let hash_half = sha512_half(&data);
 
     // Write the result back to Wasm memory.
-    set_data_in_memory(&memory, &mut caller, &hash_half, out_buf_ptr).unwrap();
+    set_data_in_memory(&memory, &mut caller, &hash_half, out_buf_ptr);
 
     // Return the number of bytes written.
     32
@@ -107,11 +106,21 @@ pub fn compute_sha512_half(
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    // --- soroban-wasmi Change: Setup & Configuration ---
     // 1. Create a `Config` and enable fuel consumption.
     let mut config = Config::default();
     config.consume_fuel(true);
     config.floats(false);
+    config.wasm_mutable_global(false);
+    config.wasm_multi_value(false);
+    config.wasm_multi_memory(false);
+    config.wasm_saturating_float_to_int(false);
+    config.wasm_sign_extension(false);
+    config.wasm_bulk_memory(false);
+    config.wasm_reference_types(false);
+    config.wasm_tail_call(false);
+    config.wasm_custom_page_sizes(false);
+    config.wasm_memory64(false);
+    config.wasm_wide_arithmetic(false);
 
     // 2. Create the `Engine` and a `Store`. The store holds the fuel.
     let engine = Engine::new(&config);
@@ -122,7 +131,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     store.set_fuel(initial_fuel)?;
     println!("Initial fuel limit set to: {}", initial_fuel);
 
-    // --- soroban-wasmi Change: Linking ---
     // 4. Create a `Linker` and define the host function import.
     let mut linker = Linker::new(&engine);
     linker.func_wrap(
@@ -141,20 +149,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
 
     // 6. Instantiate the module, linking the host functions.
-    let instance = linker.instantiate(&mut store, &module)?.start(&mut store)?;
+    let instance = linker.instantiate_and_start(&mut store, &module)?;
 
     // 7. Get the exported Wasm function you want to call.
     let func: Func = instance.get_func(&mut store, "finish").ok_or("finish export not found")?;
 
     let start2 = Instant::now();
-    let mut result_buffer = [soroban_wasmi::Val::I32(0)];
+    let mut result_buffer = [wasmi::Val::I32(0)];
     func.call(&mut store, &[], &mut result_buffer)?;
     let duration2 = start2.elapsed();
     let duration = start.elapsed();
 
     let result = result_buffer[0].i32().ok_or("Invalid result type")?;
 
-    // --- soroban-wasmi Change: Reading Consumed Fuel ---
     // `wasmi` tracks both remaining and consumed fuel.
     // let consumed_fuel = store.fuel_consumed().unwrap();
     let remaining_fuel = store.get_fuel().unwrap();
