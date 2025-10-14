@@ -4,4 +4,5 @@ wasm-lib/target
 mock-math-lib/.idea
 wasm-host/.idea
 wasm-lib/.idea
-
+.idea
+/.idea/.gitignore

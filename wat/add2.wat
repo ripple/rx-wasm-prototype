@@ -4,7 +4,7 @@
   (func (export "finish") (result i32)
     (local $count i32)
     (local $sum i32)
-    (local.set $count (i32.const 1000000000))
+    (local.set $count (i32.const 100000000))
     (local.set $sum (i32.const 0))
 
     (loop $my_loop
