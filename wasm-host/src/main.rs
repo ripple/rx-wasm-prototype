@@ -1,10 +1,17 @@
 use std::fs;
 use sha2::{Digest, Sha512};
-use wasmi::{
-    Caller, Config, Engine, Extern, Func, Linker, Module, Store,
-};
+use wasmi::{Caller, CompilationMode, Config, Engine, Extern, Func, Linker, Module, Store};
 use std::path::PathBuf;
 use std::time::Instant;
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(name = "wasm-host")]
+#[command(about = "A WASM runtime host", long_about = None)]
+struct Args {
+    /// Path to the WASM file to execute
+    wasm_file: PathBuf,
+}
 
 // This hashing function remains unchanged.
 pub fn sha512_half(data: &[u8]) -> Vec<u8> {
@@ -104,7 +111,24 @@ pub fn compute_sha512_half(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    let args = Args::parse();
+    let wasm_file = args.wasm_file;
+    println!("Loading WASM module from: {:?}", wasm_file);
+    let wasm_bytes = fs::read(wasm_file)?;
+
+    // let wasm_file = PathBuf::from("/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
+    // let wasm_file = PathBuf::from("/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
+
+    // _gc_str,
+    // Error: Error { kind: Wasm(BinaryReaderError { inner: BinaryReaderErrorInner { message: "invalid leading byte (0x63) for type", kind: Custom, offset: 11, needed_hint: None } }) }
+    let _gc_str = "0061736d0100000001070163017f000204012000030201000708010466696e69736800000a0b01090041054110f8030b450b";
+    // _exception_str
+    // Error: Error { kind: Wasm(BinaryReaderError { inner: BinaryReaderErrorInner { message: "invalid leading byte (0x73) for external kind", kind: Custom, offset: 26, needed_hint: None } }) }
+    let _exception_str = "0061736d01000000010401600000030201000708010466696e69736800000a0b01090041000640000b0b";
+
+    // _str_ref_str fail successfully to show "reference types support is not enabled"
+    let _str_ref_str = "0061736d010000000105016000016e030201000708010466696e69736800000a0a010800fc18000a450b";
+    // let wasm_bytes = hex::decode(_gc_str).unwrap();
 
     // 1. Create a `Config` and enable fuel consumption.
     let mut config = Config::default();
@@ -121,6 +145,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.wasm_custom_page_sizes(false);
     config.wasm_memory64(false);
     config.wasm_wide_arithmetic(false);
+    config.wasm_extended_const(false);
+    config.compilation_mode(CompilationMode::Eager);
 
     // 2. Create the `Engine` and a `Store`. The store holds the fuel.
     let engine = Engine::new(&config);
@@ -140,10 +166,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // 5. Load and compile the Wasm module.
-    // let wasm_file = PathBuf::from("/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm"); // Make sure test.wasm is in the project root
-    let wasm_file = PathBuf::from("/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
-    println!("Loading WASM module from: {:?}", wasm_file);
-    let wasm_bytes = fs::read(wasm_file)?;
     let module = Module::new(&engine, &wasm_bytes)?;
 
     let start = Instant::now();
