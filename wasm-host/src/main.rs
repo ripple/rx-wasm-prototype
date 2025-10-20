@@ -19,9 +19,9 @@ fn main() -> Result<()> {
     debug!("Loading WASM module from file: {}", wasm_path.display());
 
     let mut config = Config::new();
-    config.consume_fuel(true);
+    // config.consume_fuel(true);
     // config.strategy(Strategy::Cranelift);
-    // config.strategy(Strategy::Winch);
+    config.strategy(Strategy::Winch);
     // config.cranelift_opt_level(OptLevel::Speed);
     // config.cranelift_opt_level(OptLevel::None);
     // config.cranelift_opt_level(OptLevel::SpeedAndSize);

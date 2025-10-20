@@ -7,5 +7,5 @@ edition = "2021"
 #wasmedge-sdk = {version = "0.14.0", features = ["standalone"]}
 log = "0.4.22"
 #wamr-rust-sdk = { git = "https://github.com/ripple/wamr-rust-sdk.git"}
-wasmtime = { version = "37.0.2", features = ["pulley"]}
+wasmtime = { version = "37.0.2", features = ["pulley", "winch"]}
 clap = { version = "4.0", features = ["derive"] }
