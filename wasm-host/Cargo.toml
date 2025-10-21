@@ -1,9 +1,10 @@
 [package]
 name = "wasm-host"
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 #wasmedge-sdk = {version = "0.14.0", features = ["standalone"]}
 log = "0.4.22"
 wamr-rust-sdk = { git = "https://github.com/ripple/wamr-rust-sdk.git"}
+hex = "0.4.3"
