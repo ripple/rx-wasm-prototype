@@ -1,200 +1,77 @@
-use std::fs;
-use sha2::{Digest, Sha512};
-use wasmi::{Caller, CompilationMode, Config, Engine, Extern, Func, Linker, Module, Store};
-use std::path::PathBuf;
+use wasmi::{Config, Engine, Instance, Module, Store};
 use std::time::Instant;
-use clap::Parser;
 
-#[derive(Parser)]
-#[command(name = "wasm-host")]
-#[command(about = "A WASM runtime host", long_about = None)]
-struct Args {
-    /// Path to the WASM file to execute
-    wasm_file: PathBuf,
-}
+/*
+(module
+  ;; Define a function type that takes no parameters and returns an i32
+  (type $t0 (func (result i32)))
 
-// This hashing function remains unchanged.
-pub fn sha512_half(data: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha512::new();
-    hasher.update(data);
-    let result = hasher.finalize();
-    result[..32].to_vec()
-}
+  ;; Define the function ($f0 is a typical internal name)
+  (func $f0 (type $t0)
+    (i32.const 1)
+  )
 
-// Helper to read data from Wasm memory.
-// Note: In `wasmi`, it's often cleaner to get the memory once inside the main host function
-// and pass it to helpers, rather than resolving the export multiple times.
-fn get_data_from_memory(
-    memory: &wasmi::Memory,
-    store: &impl wasmi::AsContext,
-    pointer: u32,
-    len: u32,
-) -> Vec<u8> {
-    let pointer = pointer as usize;
-    let len = len as usize;
-
-    // `wasmi` provides a `read` method that performs bounds checking for you.
-    let mut buffer = vec![0u8; len];
-    memory.read(store, pointer, &mut buffer).unwrap();
-
-    buffer
-}
-
-// Helper to write data to Wasm memory.
-fn set_data_in_memory(
-    memory: &wasmi::Memory,
-    store: &mut impl wasmi::AsContextMut,
-    data: &[u8],
-    output_pointer: u32,
-)  {
-    // `wasmi` provides a `write` method that performs bounds checking.
-    memory.write(store, output_pointer as usize, data).unwrap();
-
-}
-
-/// The host function, adapted for the `soroban-wasmi` API.
-pub fn compute_sha512_half(
-    mut caller: Caller<'_, ()>,
-    in_buf_ptr: u32,
-    in_buf_len: u32,
-    out_buf_ptr: u32,
-    out_buf_cap: u32,
-) -> i32 {
-    // --- soroban-wasmi Change: Host Function Fuel Metering ---
-    // `soroban-wasmi` provides a direct `consume_fuel` method.
-    // This is much cleaner than the get/set pattern in wasmtime.
-    // This will return an error if there isn't enough fuel.
-    caller.set_fuel(caller.get_fuel().unwrap().saturating_sub( 1000)).unwrap();
-    // let custom_cost = 2_000;
-    // let mut have = caller.get_fuel().unwrap();
-    //
-    // if have < custom_cost {
-    //     // If fuel is insufficient, we panic. The VM will catch this and trap execution.
-    //     panic!("Host function trap: Out of fuel.");
-    // }
-    //
-    // have = have.saturating_sub(custom_cost);
-    //
-    // caller.set_fuel(have).unwrap();
-    //     // consume_fuel(custom_cot)?;
-
-    if 32 > out_buf_cap {
-        return -1;
-        // We return a `Trap` to signal an error to the Wasm module.
-        // return Err(Trap::new(TrapCode::UnreachableCodeReached));
-            // .with_message("Output buffer capacity is less than 32"));
-    }
-
-    if in_buf_len > 1024 {
-        return -1;
-            // .with_message("Input buffer length exceeds 1024"));
-    }
-
-    // --- soroban-wasmi Change: Memory Access ---
-    // Get the exported memory from the caller. The name "mem" must match the export name in your Wasm.
-    let memory = caller
-        .get_export("mem")
-        .and_then(Extern::into_memory).unwrap();
-        // .ok_or_else(|| Trap::new(TrapCode::MemoryOutOfBounds));
-
-    // Read the input data from Wasm memory.
-    let data = get_data_from_memory(&memory, &caller, in_buf_ptr, in_buf_len);
-
-    // Perform the computation.
-    let hash_half = sha512_half(&data);
-
-    // Write the result back to Wasm memory.
-    set_data_in_memory(&memory, &mut caller, &hash_half, out_buf_ptr);
-
-    // Return the number of bytes written.
-    32
-}
+  ;; Export the function, linking the internal $f0 name to the external "finish" name
+  (export "finish" (func $f0))
+)
+*/
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    let wasm_file = args.wasm_file;
-    println!("Loading WASM module from: {:?}", wasm_file);
-    let wasm_bytes = fs::read(wasm_file)?;
-
-    // let wasm_file = PathBuf::from("/Users/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
-    // let wasm_file = PathBuf::from("/home/pwang/wasm/rx-wasm-prototype/wat/test.wasm");
-
-    // _gc_str,
-    // Error: Error { kind: Wasm(BinaryReaderError { inner: BinaryReaderErrorInner { message: "invalid leading byte (0x63) for type", kind: Custom, offset: 11, needed_hint: None } }) }
-    let _gc_str = "0061736d0100000001070163017f000204012000030201000708010466696e69736800000a0b01090041054110f8030b450b";
-    // _exception_str
-    // Error: Error { kind: Wasm(BinaryReaderError { inner: BinaryReaderErrorInner { message: "invalid leading byte (0x73) for external kind", kind: Custom, offset: 26, needed_hint: None } }) }
-    let _exception_str = "0061736d01000000010401600000030201000708010466696e69736800000a0b01090041000640000b0b";
-
-    // _str_ref_str fail successfully to show "reference types support is not enabled"
-    let _str_ref_str = "0061736d010000000105016000016e030201000708010466696e69736800000a0a010800fc18000a450b";
-    // let wasm_bytes = hex::decode(_gc_str).unwrap();
-
-    // 1. Create a `Config` and enable fuel consumption.
     let mut config = Config::default();
     config.consume_fuel(true);
-    config.floats(false);
-    config.wasm_mutable_global(false);
-    config.wasm_multi_value(false);
-    config.wasm_multi_memory(false);
-    config.wasm_saturating_float_to_int(false);
-    config.wasm_sign_extension(false);
-    config.wasm_bulk_memory(false);
-    config.wasm_reference_types(false);
-    config.wasm_tail_call(false);
-    config.wasm_custom_page_sizes(false);
-    config.wasm_memory64(false);
-    config.wasm_wide_arithmetic(false);
-    config.wasm_extended_const(false);
-    config.compilation_mode(CompilationMode::Eager);
 
-    // 2. Create the `Engine` and a `Store`. The store holds the fuel.
-    let engine = Engine::new(&config);
-    let mut store = Store::new(&engine, ());
+    let wasm_code = "0061736d010000000105016000017f03020100070a010666696e69736800000a0601040041010b";
+    let wasm_binary = hex::decode(wasm_code).expect("Invalid hex string");
 
-    // 3. Set the initial fuel. This is the "gas limit" for the transaction.
-    let initial_fuel = 18_000;
-    store.set_fuel(initial_fuel)?;
-    println!("Initial fuel limit set to: {}", initial_fuel);
-
-    // 4. Create a `Linker` and define the host function import.
-    let mut linker = Linker::new(&engine);
-    linker.func_wrap(
-        "host_lib", // Module name in Wasm
-        "compute_sha512_half", // Function name in Wasm
-        compute_sha512_half,
-    )?;
-
-    // 5. Load and compile the Wasm module.
-    let module = Module::new(&engine, &wasm_bytes)?;
+    let start_all = Instant::now();
 
     let start = Instant::now();
 
-    // 6. Instantiate the module, linking the host functions.
-    let instance = linker.instantiate_and_start(&mut store, &module)?;
+    let engine = Engine::new(&config);
+    let duration_engine = start.elapsed();
 
-    // 7. Get the exported Wasm function you want to call.
-    let func: Func = instance.get_func(&mut store, "finish").ok_or("finish export not found")?;
+    let start = Instant::now();
+    let mut store = Store::new(&engine, ());
+    let duration_store = start.elapsed();
 
-    let start2 = Instant::now();
-    let mut result_buffer = [wasmi::Val::I32(0)];
-    func.call(&mut store, &[], &mut result_buffer)?;
-    let duration2 = start2.elapsed();
-    let duration = start.elapsed();
+    let start = Instant::now();
+    store.set_fuel(1_000_000_000_000)?;
+    let duration_set_fuel = start.elapsed();
 
-    let result = result_buffer[0].i32().ok_or("Invalid result type")?;
+    // let module = Module::from_file(store.engine(), &wasm_path)?;
+    let start = Instant::now();
+    let module = Module::new(&engine, &wasm_binary)?;
 
-    // `wasmi` tracks both remaining and consumed fuel.
-    // let consumed_fuel = store.fuel_consumed().unwrap();
-    let remaining_fuel = store.get_fuel().unwrap();
+    let duration_module = start.elapsed();
 
-    println!("\n--- Results ---");
-    println!("Wasm function returned: {:?}", result);
-    println!("Total execution time:    {:?}", duration);
-    println!("Function execution time: {:?}", duration2);
-    println!("Remaining fuel: {} units", remaining_fuel);
-    println!("Fuel consumed: {} units", initial_fuel - remaining_fuel);
+    let start = Instant::now();
+    let instance = Instance::new(&mut store, &module, &[])?;
+    let duration_instance = start.elapsed();
 
+    let start = Instant::now();
+    let func = instance.get_typed_func::<(), i32>(&mut store, "finish")?;
+    let duration_func = start.elapsed();
+
+    let start = Instant::now();
+    let result = func.call(&mut store, ())?;
+    let duration_call = start.elapsed();
+
+    let start = Instant::now();
+    let consumed_fuel = 1_000_000_000_000 - store.get_fuel()?;
+    let duration_get_fuel = start.elapsed();
+
+    println!("result {:?}", result);
+    println!("Fuel consumed: {}", consumed_fuel);
+
+    println!("create engine   : {:?}", duration_engine );
+    println!("create store    : {:?}", duration_store );
+    println!("set fuel        : {:?}", duration_set_fuel );
+    println!("load module     : {:?}", duration_module);
+    println!("create instance : {:?}", duration_instance);
+    println!("get function    : {:?}", duration_func);
+    println!("call function   : {:?}", duration_call);
+    println!("get fuel        : {:?}", duration_get_fuel);
+    println!("all with timer  : {:?}", start_all.elapsed());
 
     Ok(())
 }
