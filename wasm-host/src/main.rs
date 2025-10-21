@@ -1,23 +1,8 @@
-use wasmi::{Config, Engine, Instance, Module, Store};
 use std::time::Instant;
+use wasmtime::*;
 
-/*
-(module
-  ;; Define a function type that takes no parameters and returns an i32
-  (type $t0 (func (result i32)))
-
-  ;; Define the function ($f0 is a typical internal name)
-  (func $f0 (type $t0)
-    (i32.const 1)
-  )
-
-  ;; Export the function, linking the internal $f0 name to the external "finish" name
-  (export "finish" (func $f0))
-)
-*/
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut config = Config::default();
+fn main() -> Result<()> {
+    let mut config = Config::new();
     config.consume_fuel(true);
 
     let wasm_code = "0061736d010000000105016000017f03020100070a010666696e69736800000a0601040041010b";
@@ -26,8 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start_all = Instant::now();
 
     let start = Instant::now();
-
-    let engine = Engine::new(&config);
+    let engine = Engine::new(&config)?;
     let duration_engine = start.elapsed();
 
     let start = Instant::now();
@@ -38,10 +22,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     store.set_fuel(1_000_000_000_000)?;
     let duration_set_fuel = start.elapsed();
 
-    // let module = Module::from_file(store.engine(), &wasm_path)?;
     let start = Instant::now();
-    let module = Module::new(&engine, &wasm_binary)?;
-
+    let module = Module::from_binary(store.engine(), &wasm_binary)?;
     let duration_module = start.elapsed();
 
     let start = Instant::now();

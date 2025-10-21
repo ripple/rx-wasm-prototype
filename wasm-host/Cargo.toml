@@ -4,9 +4,5 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-env_logger = "0.11.8"
-sha2 = "0.11.0-rc.2"
-wasmi = {git = "https://github.com/wasmi-labs/wasmi.git"}
-clap = { version = "4.5.49", features = ["derive"] }
-log = "0.4.28"
+wasmtime = "38.0.1"
 hex = "0.4.3"
